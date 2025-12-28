@@ -32,11 +32,11 @@ Approach:
 My goal for the following query was to find directors who consistently deliver under/at budget AND ahead of/directly on schedule.
 
 1. The query finds each director's budget and schedule efficiency scores for each of their movies.
-2. Then, to gain additional insight on genres, we average each directors' efficiency scores 
-    in any genre they have directed.
-3. All of this information is contained in a subquery that is then filtered for the directors who have always 
+2. Then, to gain insight on which genre(s) each director is most efficient in, we get an average of their efficiency scores
+    separated by genre.
+3. This information is contained in a subquery that the outer query filters for the directors who have consistently 
     delivered under/at budget and ahead of/directly on schedule, then returns their 
-    average budget efficiency and average schedule efficiency by genre.
+    average budget efficiency by genre and average schedule efficiency by genre.
 
 Efficiency scores here are measured against a baseline of 100%, where actual values match planned values,
     and are calculated as actual / planned.
@@ -98,7 +98,7 @@ Approach:
 Columns Explained:
 
 film_performance:
-    A film Success is one where box office earnings are more than the intended total cost, budget plus market spend.
+    A film Success is one where box office earnings are more than the intended total cost: budget plus market spend.
     A film Flop is one where box office earnings are less than the intended total cost.
 
 film_risk:
@@ -134,7 +134,7 @@ Stored procedure that recommends a "Greenlight" decision to a producer.
 Approach:
 
 1. I used temporary tables to create the necessary behavior.
-    There were a couple of checks required throughout the operation that didn't seem to work as one query.
+    There were a couple of checks required throughout the operation that performed better as separate queries.
     i.e. Filtering by row rankings; Searching for a provided parameter value in the results before returning.
 
 2. I also used the cast(), format(), and string_agg() built-in functions.
@@ -227,4 +227,5 @@ exec p_greenlight @director_lastname = 'Rodriguez'; -- With this example, you ca
 exec p_greenlight @director_firstname = 'Ava', @genre = 'Action';
 
 -- Example: Rina Patel; Rina has not directed any Horror movies.
+
 exec p_greenlight @director_lastname = 'Patel', @genre = 'Horror';
