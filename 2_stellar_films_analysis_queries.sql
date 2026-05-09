@@ -51,18 +51,16 @@ select director, genre_name, avg_budg_eff_by_genre, avg_sched_eff_by_genre from 
     select
         t.person_firstname + ' ' + t.person_lastname as director,
         g.genre_name,
-        cast((f.actual_spend/f.budget_allocated) * 100 as decimal(5,2)) as budg_eff_by_film,
+        (f.actual_spend/f.budget_allocated) * 100 as budg_eff_by_film,
         cast(avg((f.actual_spend/f.budget_allocated)  * 100) over (partition by t.person_id, g.genre_name) as decimal(5,2)) as avg_budg_eff_by_genre,
         s.actual_shooting_days - s.planned_shooting_days as sched_var_in_days,
-        cast((cast(s.actual_shooting_days as real)/cast(s.planned_shooting_days as real)) * 100 as decimal(5,2)) as sched_eff_by_film,
+        (cast(s.actual_shooting_days as real)/cast(s.planned_shooting_days as real)) * 100 as sched_eff_by_film,
         cast(avg(cast(s.actual_shooting_days as real)/cast(s.planned_shooting_days as real)  * 100) over (partition by t.person_id, g.genre_name) as decimal(5,2)) as avg_sched_eff_by_genre
             from talent_stats as t
             join productions as p on p.director_id = t.person_id
             join finances as f on f.prod_id = p.prod_id
             join schedules as s on s.prod_id = p.prod_id
             join genres as g on g.genre_id = p.genre_id
-                group by t.person_firstname, t.person_lastname, t.person_id, g.genre_name, f.actual_spend, f.budget_allocated,
-                    s.actual_shooting_days, s.planned_shooting_days
 ) as sub 
     group by director, genre_name, avg_budg_eff_by_genre, avg_sched_eff_by_genre
     having
