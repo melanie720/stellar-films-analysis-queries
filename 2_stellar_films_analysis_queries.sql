@@ -32,11 +32,9 @@ Approach:
 My goal for the following query was to find directors who consistently deliver under/at budget AND ahead of/directly on schedule.
 
 1. The query finds each director's budget and schedule efficiency scores for each of their movies.
-2. Then, to gain insight on which genre(s) each director is most efficient in, we get an average of their efficiency scores
-    separated by genre.
-3. This information is contained in a subquery that the outer query filters for the directors who have consistently 
-    delivered under/at budget and ahead of/directly on schedule, then returns their 
-    average budget efficiency by genre and average schedule efficiency by genre.
+2. Then, to gain insight on which genre(s) each director is most efficient in, I get an average of their efficiency scores separated by genre.
+3. This information is contained in a CTE which the following query filters for the directors who have consistently delivered under/at budget 
+    and ahead of/directly on schedule, then returns their average budget efficiency by genre and average schedule efficiency by genre.
 
 Efficiency scores here are measured against a baseline of 100%, where actual values match planned values,
     and are calculated as actual / planned.
@@ -47,7 +45,7 @@ We find that a couple of directors have been successful at more than one genre -
 We also find that Ava Rodriguez is more efficient than Kaito Sato in Comedy.
 */
 
-select director, genre_name, avg_budg_eff_by_genre, avg_sched_eff_by_genre from (
+with sub as (
     select
         t.person_firstname + ' ' + t.person_lastname as director,
         g.genre_name,
@@ -61,11 +59,14 @@ select director, genre_name, avg_budg_eff_by_genre, avg_sched_eff_by_genre from 
             join finances as f on f.prod_id = p.prod_id
             join schedules as s on s.prod_id = p.prod_id
             join genres as g on g.genre_id = p.genre_id
-) as sub 
+)
+
+select director, genre_name, avg_budg_eff_by_genre, avg_sched_eff_by_genre 
+    from sub 
     group by director, genre_name, avg_budg_eff_by_genre, avg_sched_eff_by_genre
     having
-        sum(case when budg_eff_by_film <= 100 then 1 else 0 end) = count(director) and
-        sum(case when sched_eff_by_film <= 100 then 1 else 0 end) = count(director)
+        sum(case when budg_eff_by_film <= 100 then 1 else 0 end) = count(*) and
+        sum(case when sched_eff_by_film <= 100 then 1 else 0 end) = count(*)
         
 
 -- B. The "Location ROI" (plus heatmap).
@@ -141,7 +142,7 @@ Approach:
 
 If a user supplies a director and a genre, the procedure checks:
 
-1.	The director's historical ROI in that genre.
+1.	The director’s ROI of each film.
         Column: film_rev_per_dollar_spent
             For the individual film title.
     
@@ -158,9 +159,9 @@ drop procedure if exists p_greenlight
 go 
 
 create procedure p_greenlight (
-    @director_firstname varchar(20) = null,
-    @director_lastname varchar(20) = null,
-    @genre varchar(15) = null
+    @director_firstname varchar(20) = '',
+    @director_lastname varchar(20) = '',
+    @genre varchar(15) = ''
 ) as begin    
     select g.genre_id, l.location_id, l.location_name, 
         avg(f.box_office_global - (f.actual_spend + f.marketing_spend)) as avg_profit_gen_loc,
@@ -177,30 +178,63 @@ create procedure p_greenlight (
         from #genre_location_profit
             where profit_ranking = 1
 
-    select distinct t.person_firstname + ' ' + t.person_lastname as director, p.title, g.genre_name,
-        cast(f.box_office_global/f.actual_spend as decimal(5,2)) as film_rev_per_dollar_spent,
+    select 
+        distinct t.person_firstname as director_fn, t.person_lastname as director_ln, 
+        p.title as Title, g.genre_name as Genre,
+        cast(f.box_office_global/f.actual_spend as decimal(5,2)) as Film_Rev_per_Dollar_Spent,
         format((select distinct avg(f.box_office_global - (f.actual_spend + f.marketing_spend)) over (partition by g.genre_name)
             from finances as f
             join productions as p2 on p2.prod_id = f.prod_id
             join genres as g on g.genre_id = p.genre_id
                 where p2.genre_id = p.genre_id
-        ), 'C') as avg_profit_for_genre,
-        string_agg(o.location_name, ', ') as optimal_loc_for_genre
+        ), 'C') as Avg_Profit_for_Genre,
+        string_agg(o.location_name, ', ') as Optimal_Loc_for_Genre
             into #director_genre_stats
             from talent_stats as t
             right join productions as p on t.person_id = p.director_id
             join genres as g on g.genre_id = p.genre_id
             join finances as f on f.prod_id = p.prod_id
             join #optimal_location as o on o.genre_id = p.genre_id
-                where t.person_firstname = @director_firstname or t.person_lastname = @director_lastname
+                --where t.person_firstname = @director_firstname or t.person_lastname = @director_lastname
                 group by t.person_firstname, t.person_lastname, p.title, g.genre_name, 
                     f.box_office_global, f.actual_spend, p.genre_id
 
-    if exists (select 1 from #director_genre_stats where genre_name = @genre) begin
-        select * from #director_genre_stats where genre_name = @genre
+-- Wrong combination of director first and last name.
+    if @director_firstname != '' and @director_lastname != ''
+      if not exists (select 1 from talent_stats where person_lastname = @director_lastname and person_firstname = @director_firstname)
+        throw 50016, 'Director by that name does not exist.', 1
+
+-- Only genre provided.
+    if @genre != '' and @director_firstname = '' and @director_lastname = '' begin
+        select 
+            director_fn + ' ' + director_ln as Director,
+            Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
+            from #director_genre_stats
+            where Genre = @genre
+            order by Film_Rev_per_Dollar_Spent desc, Director
     end
     else begin
-        select * from #director_genre_stats order by genre_name
+-- If the provided director has films of the provided genre.
+-- Could have provided one or both of the name parameters.
+        if exists (select 1 from #director_genre_stats where Genre = @genre) begin
+            select 
+                director_fn + ' ' + director_ln as Director, 
+                Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
+                from #director_genre_stats 
+                where Genre = @genre and (director_fn = @director_firstname or director_ln = @director_lastname) 
+                order by Film_Rev_per_Dollar_Spent desc, Director
+        end
+        else begin
+-- If the provided director does not have any films of the provided genre.
+-- Or if only name parameters were provided.
+            select 
+                director_fn + ' ' + director_ln as Director, 
+                Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
+                from #director_genre_stats 
+                where director_fn = @director_firstname or director_ln = @director_lastname
+                order by Film_Rev_per_Dollar_Spent desc, Genre
+            print 'No results for selected genre. Showing all films for director.';
+        end
     end
 
     drop table #genre_location_profit;
@@ -217,6 +251,8 @@ User can provide a director's first name, last name, or both, with or without a 
 Without a genre, all of the director's films are returned.
 With a genre, if present in the director's work, the procedure will filter by that genre;
     if not present, all of the director's films are returned.
+
+User can provide a genre alone and the procedure will return all films / directors of that genre.
 */
 
 -- Example: Ava Rodriguez; Ava has directed many Action movies.
@@ -227,3 +263,7 @@ exec p_greenlight @director_firstname = 'Ava', @genre = 'Action';
 -- Example: Rina Patel; Rina has not directed any Horror movies.
 
 exec p_greenlight @director_lastname = 'Patel', @genre = 'Horror';
+
+-- Example: Providing only a genre.
+
+exec p_greenlight @genre = 'Horror';
