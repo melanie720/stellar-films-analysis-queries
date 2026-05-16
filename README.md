@@ -8,6 +8,7 @@ Inspired by my relational database management course (Fall 2025) and big data ma
 
 I use SQL, Jupyter Notebook, the IPython.display module, and other technologies to support these objectives. This project also transforms a SQL stored procedure into a user-friendly interactive web app.
 
+
 **The Problem:**
 Stellar Films Studios is seeing a trend of "Budget Creep" (movies going over budget) and inconsistent returns on investment.
 
@@ -15,6 +16,7 @@ Stellar Films Studios is seeing a trend of "Budget Creep" (movies going over bud
 My goal is to write queries and form a procedure that supports film production data analysis. I will also create a helpful tool to identify combinations of director, genre, and location that yield the lowest financial risk and highest profitability.
 
 I've included a [script](1_stellar_films_db_script.sql) that creates the database environment and a [file](2_stellar_films_analysis_queries.sql) containing the queries (and a procedure) ready to test.
+
 
 Extra: I've also uploaded some supporting graphs and charts made in Microsoft Excel to visualize the data we can obtain from my Location ROI query:
 
