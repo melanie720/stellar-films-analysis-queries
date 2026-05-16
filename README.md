@@ -18,7 +18,7 @@ My goal is to write queries and form a procedure that supports film production d
 I've included a [script](1_stellar_films_db_script.sql) that creates the database environment and a [file](2_stellar_films_analysis_queries.sql) containing the queries (and a procedure) ready to test.
 
 
-Extra: I've also uploaded some supporting graphs and charts made in Microsoft Excel to visualize the data we can obtain from my Location ROI query:
+Extra: I also uploaded some supporting graphs and charts made in Microsoft Excel to visualize the data we can obtain from my Location ROI query. You can't see it here, but they're actually dynamic.
 
 * [Graph](Location_ROI_1_Rev_Delay_Graph.png)
 * [Heatmap](Location_ROI_2_Rev_Delay_Heatmap.png)
