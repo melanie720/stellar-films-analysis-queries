@@ -195,45 +195,63 @@ create procedure p_greenlight (
             join genres as g on g.genre_id = p.genre_id
             join finances as f on f.prod_id = p.prod_id
             join #optimal_location as o on o.genre_id = p.genre_id
-                --where t.person_firstname = @director_firstname or t.person_lastname = @director_lastname
                 group by t.person_firstname, t.person_lastname, p.title, g.genre_name, 
                     f.box_office_global, f.actual_spend, p.genre_id
 
--- Wrong combination of director first and last name.
+-- Wrong combination of director first and last name provided.
     if @director_firstname != '' and @director_lastname != ''
       if not exists (select 1 from talent_stats where person_lastname = @director_lastname and person_firstname = @director_firstname)
         throw 50016, 'Director by that name does not exist.', 1
-
--- Only genre provided.
-    if @genre != '' and @director_firstname = '' and @director_lastname = '' begin
-        select 
-            director_fn + ' ' + director_ln as Director,
-            Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
-            from #director_genre_stats
-            where Genre = @genre
-            order by Film_Rev_per_Dollar_Spent desc, Director
-    end
-    else begin
--- If the provided director has films of the provided genre.
--- Could have provided one or both of the name parameters.
-        if exists (select 1 from #director_genre_stats where Genre = @genre) begin
+    
+-- Genre is provided.
+    if @genre != '' begin
+        -- Both first and last names provided.
+        if @director_firstname != '' and @director_lastname != '' begin
             select 
-                director_fn + ' ' + director_ln as Director, 
+                director_fn + ' ' + director_ln as Director,
                 Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
-                from #director_genre_stats 
-                where Genre = @genre and (director_fn = @director_firstname or director_ln = @director_lastname) 
-                order by Film_Rev_per_Dollar_Spent desc, Director
+                    from #director_genre_stats
+                    where Genre = @genre and director_fn = @director_firstname and director_ln = @director_lastname
+                    order by Film_Rev_per_Dollar_Spent desc
         end
-        else begin
--- If the provided director does not have any films of the provided genre.
--- Or if only name parameters were provided.
+        -- First or last name provided.
+        else if @director_firstname != '' or @director_lastname != '' begin
             select 
-                director_fn + ' ' + director_ln as Director, 
+                director_fn + ' ' + director_ln as Director,
                 Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
-                from #director_genre_stats 
-                where director_fn = @director_firstname or director_ln = @director_lastname
-                order by Film_Rev_per_Dollar_Spent desc, Genre
-            print 'No results for selected genre. Showing all films for director.';
+                    from #director_genre_stats
+                    where Genre = @genre and (director_fn = @director_firstname or director_ln = @director_lastname)
+                    order by Director, Film_Rev_per_Dollar_Spent desc
+        end
+        -- Only genre provided.
+        else begin
+            select 
+                director_fn + ' ' + director_ln as Director,
+                Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
+                    from #director_genre_stats
+                    where Genre = @genre
+                    order by Director, Film_Rev_per_Dollar_Spent desc
+        end
+    end
+-- No genre provided.
+    else begin
+        -- Both first and last names provided.
+        if @director_firstname != '' and @director_lastname != '' begin
+            select 
+                director_fn + ' ' + director_ln as Director,
+                Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
+                    from #director_genre_stats
+                    where director_fn = @director_firstname and director_ln = @director_lastname
+                    order by Film_Rev_per_Dollar_Spent desc
+        end
+        -- First or last name provided.
+        else begin
+            select 
+                director_fn + ' ' + director_ln as Director,
+                Title, Genre, Film_Rev_per_Dollar_Spent, Avg_Profit_for_Genre, Optimal_Loc_for_Genre
+                    from #director_genre_stats
+                    where director_fn = @director_firstname or director_ln = @director_lastname
+                    order by Director, Film_Rev_per_Dollar_Spent desc
         end
     end
 
