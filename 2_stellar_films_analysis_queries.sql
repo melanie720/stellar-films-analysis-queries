@@ -159,7 +159,7 @@ If a user supplies a director and a genre, the procedure provides:
 -- drop view if exists genre_optimal_locations_avg_profit;
 
 -- This View shows you each genre along with its optimal filming location and average profit.
-    create view genre_optimal_locations_avg_profit
+create view genre_optimal_locations_avg_profit
 as
 
 -- This first CTE takes each film and its genre, filming location, and financial information, then finds the average profit of each genre in each filming location.
