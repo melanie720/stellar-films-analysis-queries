@@ -119,9 +119,9 @@ select
         else 'Lower Risk'
         end as film_risk
     from productions as p
-    left join schedules as s on s.prod_id = p.prod_id
-    left join finances as f on f.prod_id = p.prod_id
-    left join talent_stats as t on t.person_id = p.director_id
+    join schedules as s on s.prod_id = p.prod_id
+    join finances as f on f.prod_id = p.prod_id
+    join talent_stats as t on t.person_id = p.director_id
         order by film_performance
 
 
@@ -213,7 +213,7 @@ select
     g.genre_name as Genre,
     cast(f.box_office_global/f.actual_spend as decimal(5,2)) as Film_Rev_per_Dollar_Spent
         from talent_stats as t
-        right join productions as p on t.person_id = p.director_id
+        join productions as p on t.person_id = p.director_id
         join genres as g on g.genre_id = p.genre_id
         join finances as f on f.prod_id = p.prod_id;
 
